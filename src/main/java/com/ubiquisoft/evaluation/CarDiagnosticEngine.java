@@ -9,37 +9,77 @@ import javax.xml.bind.JAXBContext;
 import javax.xml.bind.JAXBException;
 import javax.xml.bind.Unmarshaller;
 import java.io.InputStream;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
 
 public class CarDiagnosticEngine {
 
+	private static final Set<ConditionType> VALID_PART_STATUS;
+	static {
+		VALID_PART_STATUS = new HashSet<>();
+		VALID_PART_STATUS.add(ConditionType.NEW);
+		VALID_PART_STATUS.add(ConditionType.GOOD);
+		VALID_PART_STATUS.add(ConditionType.WORN);
+	}
+
 	public void executeDiagnostics(Car car) {
-		/*
-		 * Implement basic diagnostics and print results to console.
-		 *
-		 * The purpose of this method is to find any problems with a car's data or parts.
-		 *
-		 * Diagnostic Steps:
-		 *      First   - Validate the 3 data fields are present, if one or more are
-		 *                then print the missing fields to the console
-		 *                in a similar manner to how the provided methods do.
-		 *
-		 *      Second  - Validate that no parts are missing using the 'getMissingPartsMap' method in the Car class,
-		 *                if one or more are then run each missing part and its count through the provided missing part method.
-		 *
-		 *      Third   - Validate that all parts are in working condition, if any are not
-		 *                then run each non-working part through the provided damaged part method.
-		 *
-		 *      Fourth  - If validation succeeds for the previous steps then print something to the console informing the user as such.
-		 * A damaged part is one that has any condition other than NEW, GOOD, or WORN.
-		 *
-		 * Important:
-		 *      If any validation fails, complete whatever step you are actively one and end diagnostics early.
-		 *
-		 * Treat the console as information being read by a user of this application. Attempts should be made to ensure
-		 * console output is as least as informative as the provided methods.
-		 */
+		validateDataFields(car);
+		validatePartsArePresent(car);
+		validatePartsCondition(car);
+	}
 
+	private void validatePartsCondition(Car car) {
+		for (Part part : car.getParts()) {
+			if ((part.getCondition() == null) || (!VALID_PART_STATUS.contains(part.getCondition()))) {
+				printDamagedPart(part.getType(), part.getCondition());
+			}
+		}
+	}
 
+	private void validatePartsArePresent(Car car) {
+		Map<PartType, Integer> missingParts = car.getMissingPartsMap();
+		Boolean carIsMissingParts = !missingParts.isEmpty();
+
+		if (carIsMissingParts) {
+			missingParts.keySet().stream().forEach(partType -> printMissingPart(partType, missingParts.get(partType)));
+			exitIfNotValid(carIsMissingParts, "Parts");
+		}
+	}
+
+	private void validateDataFields(Car car) {
+		boolean isDataFieldMissing = checkForAndReportMissingDataField(car);
+		exitIfNotValid(isDataFieldMissing, "Data Field");
+	}
+
+	public void exitIfNotValid(Boolean itemIsMissing, String message) {
+		if (itemIsMissing) {
+			System.out.println(String.format("Validation on car failed for: %s", message));
+			System.exit(1);
+		}
+	}
+
+	private Boolean checkForAndReportMissingDataField(Car car) {
+		boolean yearIsMissing = checkIsMissingAndReport(car.getYear(), "Year");
+		boolean makeIsMissing = checkIsMissingAndReport(car.getMake(), "Make");
+		boolean modelIsMissing = checkIsMissingAndReport(car.getModel(), "Model");
+
+		return yearIsMissing | makeIsMissing | modelIsMissing;
+	}
+
+	private boolean checkIsMissingAndReport(String item, String identifier) {
+		if ((item == null) || (item.length() < 1)) {
+			printMissingDataField(identifier);
+			return true;
+		}
+
+		return false;
+	}
+
+	private void printMissingDataField(String missingField) {
+		if (missingField == null) throw new IllegalArgumentException("String must not be null");
+
+		System.out.println(String.format("Missing field Detected: %s", missingField));
 	}
 
 	private void printMissingPart(PartType partType, Integer count) {
